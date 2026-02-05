@@ -35,6 +35,20 @@ Source your restic environment and run the script with the mount point:
 0 2 * * * . /root/restic-backup.env && python3 /path/to/zfs-restic-backup.py /mnt/tank/family >> /var/log/zfs-restic.log 2>&1
 ```
 
+If restic env or secrets live on an encrypted dataset, check that it is unlocked first so cron fails with a clear message instead of obscure errors:
+
+```bash
+zfs-check-unlocked.py /mnt/secrets && . /mnt/secrets/restic.env && python3 /path/to/zfs-restic-backup.py /mnt/tank/family
+```
+
+## zfs-check-unlocked.py
+
+Standalone utility to check that ZFS dataset(s) are unlocked (for use before loading secrets from encrypted volumes). Takes one or more mount paths; exits 0 if all are unlocked (or not encrypted), 1 with a clear “Dataset is LOCKED” message otherwise. Stdlib only, no restic dependency.
+
+```text
+zfs-check-unlocked.py <path> [<path> ...]
+```
+
 ## Requirements
 
 - Python 3 (stdlib only; no pip dependencies).
