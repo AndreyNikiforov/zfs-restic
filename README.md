@@ -56,6 +56,49 @@ zfs-check-unlocked.py <path> [<path> ...]
 - Run as root (or with permission to create/destroy ZFS snapshots and read the dataset).
 - For encrypted datasets: unlock the encryption root before the backup runs (e.g. before cron); the script exits with an error if the dataset is locked.
 
+## Development (lint and type check)
+
+Run the linter and type checker **at least before every commit**. Config lives in `pyproject.toml`; the scripts themselves are not modified by these tools.
+
+### Set up dev environment
+
+Do this after cloning the repo or after rebuilding the devcontainer (if dev tools are not installed automatically):
+
+```bash
+cd /workspaces/zfs-restic   # or your repo path
+pip install -e ".[dev]"
+```
+
+Optional: use a virtualenv first (`python3 -m venv .venv && . .venv/bin/activate`), then run the `pip install` above.
+
+Verify setup:
+
+```bash
+ruff check . && mypy zfs-restic-backup.py zfs-check-unlocked.py
+```
+
+Exit code 0 means the environment is ready.
+
+### Lint (Ruff)
+
+```bash
+ruff check .
+```
+
+### Type check (mypy)
+
+```bash
+mypy zfs-restic-backup.py zfs-check-unlocked.py
+```
+
+### Run both
+
+```bash
+ruff check . && mypy zfs-restic-backup.py zfs-check-unlocked.py
+```
+
+Exit code 0 means all checks passed.
+
 ## License
 
 See [LICENSE](LICENSE).

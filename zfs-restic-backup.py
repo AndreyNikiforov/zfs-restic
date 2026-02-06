@@ -22,6 +22,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 
 def log(msg: str) -> None:
@@ -72,7 +73,7 @@ def get_dataset_for_path(path: str) -> str | None:
         if "\t" in line:
             name, mnt = line.split("\t", 1)
             if mnt == path:
-                return name
+                return cast(str, name)
     return None
 
 
@@ -88,7 +89,7 @@ def get_encryption_root(dataset: str) -> str | None:
     value = result.stdout.strip()
     if not value or value == "-":
         return None
-    return value
+    return cast(str, value)
 
 
 def get_keystatus(dataset: str) -> str | None:
@@ -100,7 +101,7 @@ def get_keystatus(dataset: str) -> str | None:
     )
     if result.returncode != 0:
         return None
-    return result.stdout.strip() or None
+    return cast(str | None, result.stdout.strip() or None)
 
 
 def get_snapshot_creation_time(snapshot_spec: str) -> str | None:

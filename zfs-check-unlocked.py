@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from typing import cast
 
 
 def run_cmd(cmd: list[str], capture: bool = True) -> subprocess.CompletedProcess:
@@ -38,7 +39,7 @@ def get_dataset_for_path(path: str) -> str | None:
         if "\t" in line:
             name, mnt = line.split("\t", 1)
             if mnt == path:
-                return name
+                return cast(str, name)
     return None
 
 
@@ -50,7 +51,7 @@ def get_encryption_root(dataset: str) -> str | None:
     value = result.stdout.strip()
     if not value or value == "-":
         return None
-    return value
+    return cast(str, value)
 
 
 def get_keystatus(dataset: str) -> str | None:
@@ -58,7 +59,7 @@ def get_keystatus(dataset: str) -> str | None:
     result = run_cmd(["zfs", "get", "-H", "-o", "value", "keystatus", dataset])
     if result.returncode != 0:
         return None
-    return result.stdout.strip() or None
+    return cast(str | None, result.stdout.strip() or None)
 
 
 def check_path(path: str) -> str | None:
