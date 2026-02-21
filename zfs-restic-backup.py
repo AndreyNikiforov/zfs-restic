@@ -7,9 +7,10 @@ from the snapshot dir (.zfs/snapshot/<name>) with --time from the ZFS snapshot
 creation time, then destroys the snapshot on success.
 
 Usage:
-  zfs-restic-backup.py <mount_point> [-- <restic_args>...]
+  zfs-restic-backup.py [--restic-bin <path>] <mount_point> [-- <restic_args>...]
 
-  mount_point   ZFS dataset mount point to back up.
+  --restic-bin   Optional. Path to restic binary (if not using the one in PATH).
+  mount_point    ZFS dataset mount point to back up.
   After "--", arguments are passed through to restic backup.
 """
 
@@ -126,25 +127,47 @@ def get_snapshot_creation_time(snapshot_spec: str) -> str | None:
         return None
 
 
-def parse_args(argv: list[str]) -> tuple[str, list[str]]:
-    """Parse argv: first positional = mount point; args after '--' = restic backup args."""
-    if not argv:
-        return "", []
-    if "--" in argv:
-        idx = argv.index("--")
-        mount_point = argv[0]
-        restic_args = argv[idx + 1 :]
-        return mount_point.strip(), restic_args
-    return argv[0].strip(), []
+def parse_args(argv: list[str]) -> tuple[str | None, str, list[str]]:
+    """Parse argv: optional --restic-bin <path>, then mount point, then args after '--'."""
+    restic_bin: str | None = None
+    args = list(argv)
+    while args and args[0] == "--restic-bin":
+        args.pop(0)  # drop --restic-bin
+        if not args:
+            return ("", "", [])  # invalid: --restic-bin with no value
+        restic_bin = args.pop(0).strip()
+    if not args:
+        return (restic_bin, "", [])
+    if "--" in args:
+        idx = args.index("--")
+        mount_point = args[0]
+        restic_args = args[idx + 1 :]
+        return restic_bin, mount_point.strip(), restic_args
+    return restic_bin, args[0].strip(), []
 
 
 def main() -> int:
     # ---------- Parse CLI ----------
-    mount_point, restic_cli_args = parse_args(sys.argv[1:])
+    restic_bin, mount_point, restic_cli_args = parse_args(sys.argv[1:])
     if not mount_point:
-        log("ERROR: Missing required argument: mount point")
-        log("Usage: zfs-restic-backup.py <mount_point> [-- <restic_args>...]")
+        if restic_bin == "":
+            log("ERROR: --restic-bin requires a path argument")
+        else:
+            log("ERROR: Missing required argument: mount point")
+        log("Usage: zfs-restic-backup.py [--restic-bin <path>] <mount_point> [-- <restic_args>...]")
         return 1
+
+    # ---------- Validate optional restic binary ----------
+    restic_cmd: str = "restic"
+    if restic_bin:
+        restic_bin_path = Path(restic_bin).resolve()
+        if not restic_bin_path.is_file():
+            log(f"ERROR: --restic-bin path is not a file: {restic_bin_path}")
+            return 1
+        if not os.access(restic_bin_path, os.X_OK):
+            log(f"ERROR: --restic-bin path is not executable: {restic_bin_path}")
+            return 1
+        restic_cmd = str(restic_bin_path)
 
     source_path = os.path.abspath(mount_point)
 
@@ -155,7 +178,7 @@ def main() -> int:
 
     version_cmds = [
         ("zfs", ["zfs", "version"]),
-        ("restic", ["restic", "version"]),
+        ("restic", [restic_cmd, "version"]),
     ]
     for name, cmd in version_cmds:
         try:
@@ -226,7 +249,7 @@ def main() -> int:
     # ---------- 3) Restic backup ----------
     log("Running restic backup...")
     cmd = [
-        "restic", "backup",
+        restic_cmd, "backup",
         "--time", restic_time,
         ".",
     ] + restic_cli_args
